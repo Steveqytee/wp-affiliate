@@ -1,0 +1,98 @@
+<?php
+
+class Affiliate_Ajax_Handlers {
+
+    public static function get_affiliate_details() {
+        if (!isset($_GET['affiliate_id'])) {
+            wp_send_json_error('Missing affiliate ID.');
+        }
+
+        $affiliate_id = intval($_GET['affiliate_id']);
+        global $wpdb;
+
+        $affiliate = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}affiliates WHERE user_id = %d", $affiliate_id));
+
+        if ($affiliate) {
+            wp_send_json_success($affiliate);
+        } else {
+            wp_send_json_error('Affiliate not found.');
+        }
+    }
+
+    public static function update_affiliate() {
+        if (!isset($_POST['affiliate_id'])) {
+            wp_send_json_error('Missing affiliate ID.');
+        }
+
+        $affiliate_id = intval($_POST['affiliate_id']);
+        $email = sanitize_email($_POST['email']);
+        $first_name = sanitize_text_field($_POST['first_name']);
+        $last_name = sanitize_text_field($_POST['last_name']);
+        $coupon_code = sanitize_text_field($_POST['coupon_code']);
+        $commission_rate = sanitize_text_field($_POST['commission_rate']);
+        $custom_msg = sanitize_textarea_field($_POST['custom_msg']);
+
+        // Update user details
+        wp_update_user([
+            'ID' => $affiliate_id,
+            'user_email' => $email,
+            'first_name' => $first_name,
+            'last_name' => $last_name
+        ]);
+
+        global $wpdb;
+
+        $result = $wpdb->update(
+            "{$wpdb->prefix}affiliates",
+            [
+                'coupon_code' => $coupon_code,
+                'commission_rate' => $commission_rate,
+                'custom_msg' => $custom_msg
+            ],
+            ['user_id' => $affiliate_id],
+            ['%s', '%f', '%s'],
+            ['%d']
+        );
+
+        if ($result !== false) {
+            wp_send_json_success('Affiliate updated successfully.');
+        } else {
+            wp_send_json_error('Failed to update affiliate.');
+        }
+    }
+
+    public static function delete_affiliate() {
+        if (!isset($_POST['affiliate_id']) || !wp_verify_nonce($_POST['nonce'], 'delete_affiliate_nonce')) {
+            wp_send_json_error(['message' => 'Invalid request']);
+        }
+
+        $affiliate_id = intval($_POST['affiliate_id']);
+        $result = Affiliate_Form_Handler::delete_affiliate($affiliate_id);
+
+        if ($result !== false) {
+            wp_send_json_success(['message' => 'Affiliate deleted successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to delete affiliate']);
+        }
+    }
+
+    public static function load_add_affiliate_form() {
+        require_once MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
+        wp_die(); // Required to terminate immediately and return a proper response
+    }
+
+    public static function load_edit_affiliate_form() {
+        $affiliate_id = intval($_GET['affiliate_id']);
+        $affiliate = Affiliate_Registration::get_affiliate_details($affiliate_id);
+        include MY_AFFILIATE_PLUGIN_DIR . 'templates/edit-affiliate-form.php';
+        wp_die(); // This is required to terminate immediately and return a proper response
+    }
+}
+
+// Register AJAX handlers
+add_action('wp_ajax_get_affiliate_details', ['Affiliate_Ajax_Handlers', 'get_affiliate_details']);
+add_action('wp_ajax_update_affiliate', ['Affiliate_Ajax_Handlers', 'update_affiliate']);
+add_action('wp_ajax_delete_affiliate', ['Affiliate_Ajax_Handlers', 'delete_affiliate']);
+add_action('wp_ajax_load_add_affiliate_form', ['Affiliate_Ajax_Handlers', 'load_add_affiliate_form']);
+add_action('wp_ajax_load_edit_affiliate_form', ['Affiliate_Ajax_Handlers', 'load_edit_affiliate_form']);
+
