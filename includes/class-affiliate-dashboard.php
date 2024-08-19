@@ -13,7 +13,7 @@ class Affiliate_Dashboard {
         // Fetch sales data and calculate totals using SQL aggregate functions
         $totals = $wpdb->get_row("
             SELECT
-                SUM(amount) as total_sales,
+                SUM(sale_amount) as total_sales,
                 SUM(commission) as total_commission,
                 COUNT(*) as total_referrals
             FROM {$wpdb->prefix}affiliate_sales
@@ -30,7 +30,7 @@ class Affiliate_Dashboard {
 
         // Fetch top affiliates for the current month
         $top_affiliates = $wpdb->get_results($wpdb->prepare(
-            "SELECT a.user_id, u.user_login, SUM(s.amount) as total_sales
+            "SELECT a.user_id, u.user_login, SUM(s.sale_amount) as total_sales
              FROM {$wpdb->prefix}affiliate_sales s
              JOIN {$wpdb->prefix}affiliates a ON s.affiliate_id = a.id
              JOIN {$wpdb->users} u ON a.user_id = u.ID

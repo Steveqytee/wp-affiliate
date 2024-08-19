@@ -7,34 +7,35 @@ class Affiliate_Helpers {
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}affiliate_registrations WHERE id = %d", $affiliate_id));
     }
     public static function create_affiliate_coupon($user_id, $coupon_code) {
-        // 使用传入的 $coupon_code 创建优惠券
-        $amount = '10'; // 可以设定优惠金额或折扣百分比
+        $amount = '10';
         $discount_type = 'percent';
 
         $coupon = [
             'post_title' => $coupon_code,
             'post_content' => '',
             'post_status' => 'publish',
-            'post_author' => $user_id, // 使用 affiliate 的 user_id
+            'post_author' => $user_id,
             'post_type' => 'shop_coupon'
         ];
 
         $new_coupon_id = wp_insert_post($coupon);
 
-        if (!is_wp_error($new_coupon_id)) {
-            update_post_meta($new_coupon_id, 'discount_type', $discount_type);
-            update_post_meta($new_coupon_id, 'coupon_amount', $amount);
-            update_post_meta($new_coupon_id, 'individual_use', 'no');
-            update_post_meta($new_coupon_id, 'usage_limit', ''); // 无限制
-            update_post_meta($new_coupon_id, 'expiry_date', '');
-            update_post_meta($new_coupon_id, 'apply_before_tax', 'yes');
-            update_post_meta($new_coupon_id, 'free_shipping', 'no');
-
+        if (is_wp_error($new_coupon_id)) {
+            error_log('Failed to create coupon for user ' . $user_id . ': ' . $new_coupon_id->get_error_message());
             return $new_coupon_id;
-        } else {
-            return $new_coupon_id; // 返回错误对象
         }
+
+        update_post_meta($new_coupon_id, 'discount_type', $discount_type);
+        update_post_meta($new_coupon_id, 'coupon_amount', $amount);
+        update_post_meta($new_coupon_id, 'individual_use', 'no');
+        update_post_meta($new_coupon_id, 'usage_limit', '');
+        update_post_meta($new_coupon_id, 'expiry_date', '');
+        update_post_meta($new_coupon_id, 'apply_before_tax', 'yes');
+        update_post_meta($new_coupon_id, 'free_shipping', 'no');
+
+        return $new_coupon_id;
     }
+
 
     public static function get_affiliate_registrations($status = '') {
         global $wpdb;

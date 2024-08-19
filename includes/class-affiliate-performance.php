@@ -11,8 +11,10 @@ class Affiliate_Performance {
     public static function get_total_sales($user_id) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'affiliate_sales';
-        return $wpdb->get_var($wpdb->prepare("SELECT SUM(amount) FROM $table_name WHERE affiliate_id = %d", $user_id));
+        $total_sales = $wpdb->get_var($wpdb->prepare("SELECT SUM(amount) FROM $table_name WHERE affiliate_id = %d", $user_id));
+        return $total_sales !== null ? floatval($total_sales) : 0;
     }
+
 
     public static function get_total_commission($user_id) {
         global $wpdb;

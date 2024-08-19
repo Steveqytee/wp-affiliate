@@ -92,6 +92,17 @@ class Affiliate_Shortcodes {
             }
         }
     }
+
+    public static function affiliate_dashboard_shortcode($atts) {
+        if (!is_user_logged_in() || !current_user_can('affiliate')) {
+            return "You must be logged in as an affiliate to view this.";
+        }
+
+        $current_user = wp_get_current_user();
+        // Fetch and display data related to the affiliate
+        return "<h2>Welcome, {$current_user->display_name}</h2>";
+    }
+
 }
 
 add_action('init', ['Affiliate_Shortcodes', 'handle_affiliate_login']);

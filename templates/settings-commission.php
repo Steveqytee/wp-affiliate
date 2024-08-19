@@ -1,21 +1,38 @@
+<?php
+// Initialize $commission_type with a default value if it's not already set
+$commission_type = isset($commission_type) ? $commission_type : '';
+?>
+
 <form method="post">
     <table class="form-table">
         <!-- Target Affiliates -->
         <tr>
-            <th><label for="affiliate_target">Target Affiliate(s)</label></th>
-            <td>
-                <select name="affiliate_target[]" id="affiliate_target" multiple>
-                    <option value="all" <?php selected(in_array('all', $affiliate_target), true); ?>>All Affiliates</option>
-                    <?php
-                    $affiliates = get_users(['role' => 'affiliate']);
-                    foreach ($affiliates as $affiliate) {
-                        echo '<option value="' . esc_attr($affiliate->ID) . '"' . selected(in_array($affiliate->ID, $affiliate_target), true, false) . '>' . esc_html($affiliate->display_name) . '</option>';
-                    }
-                    ?>
-                </select>
-                <p class="description">Hold down the Ctrl (Windows) / Command (Mac) button to select multiple options.</p>
-            </td>
-        </tr>
+    <th><label for="affiliate_target">Target Affiliate(s)</label></th>
+    <td>
+        <?php
+        // Ensure $affiliate_target is an array
+        $affiliate_target = isset($affiliate_target) ? (array)$affiliate_target : [];
+
+        // Fetch users with the role 'affiliate'
+        $affiliates = get_users(['role' => 'affiliate']);
+
+        if (!empty($affiliates)) {
+            echo '<select name="affiliate_target[]" id="affiliate_target" multiple>';
+            echo '<option value="all"' . selected(in_array('all', $affiliate_target), true, false) . '>All Affiliates</option>';
+
+            foreach ($affiliates as $affiliate) {
+                echo '<option value="' . esc_attr($affiliate->ID) . '"' . selected(in_array($affiliate->ID, $affiliate_target), true, false) . '>' . esc_html($affiliate->display_name) . '</option>';
+            }
+
+            echo '</select>';
+        } else {
+            echo '<p class="description">No affiliates found. Please ensure the affiliate role is created and users are assigned.</p>';
+        }
+        ?>
+        <p class="description">Hold down the Ctrl (Windows) / Command (Mac) button to select multiple options.</p>
+    </td>
+</tr>
+
 
         <!-- Commission Type Selection -->
         <tr>

@@ -1,8 +1,7 @@
 <?php
 
-
 // Ensure direct access is not allowed
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
     exit;
 }
 
@@ -64,11 +63,11 @@ $top_affiliates_this_month = $wpdb->get_results("
     <div class="summary-cards">
         <div class="card">
             <h3>Total Affiliates</h3>
-            <p><?php echo isset($summary->total_affiliates) ? $summary->total_affiliates : 0; ?></p>
+            <p><?php echo isset($summary->total_affiliates) ? esc_html($summary->total_affiliates) : 0; ?></p>
         </div>
         <div class="card">
             <h3>Total Sales</h3>
-            <p><?php echo isset($summary->total_sales) ? $summary->total_sales : 0; ?></p>
+            <p><?php echo isset($summary->total_sales) ? esc_html($summary->total_sales) : 0; ?></p>
         </div>
         <div class="card">
             <h3>Total Revenue</h3>
@@ -80,18 +79,18 @@ $top_affiliates_this_month = $wpdb->get_results("
         </div>
         <div class="card">
             <h3>Average Conversion Rate</h3>
-            <p><?php echo isset($summary->avg_conversion_rate) ? number_format($summary->avg_conversion_rate, 2) . '%' : '0%'; ?></p>
+            <p><?php echo isset($summary->avg_conversion_rate) ? esc_html(number_format($summary->avg_conversion_rate, 2)) . '%' : '0%'; ?></p>
         </div>
         <div class="card">
             <h3>Top Affiliate</h3>
             <p>
                 <?php
                 if (isset($top_affiliate->affiliate_id)) {
-                    echo get_affiliate_name($top_affiliate->affiliate_id);
+                    echo esc_html(get_affiliate_name($top_affiliate->affiliate_id));
                 } else {
                     echo 'Unknown Affiliate';
                 }
-               ?>
+                ?>
             </p>
         </div>
     </div>
@@ -101,21 +100,21 @@ $top_affiliates_this_month = $wpdb->get_results("
         <h3>Recent Sales</h3>
         <ul>
             <?php foreach ($recent_sales as $sale): ?>
-                <li><?php echo get_affiliate_name($sale->affiliate_id); ?> - <?php echo wc_price($sale->sale_amount); ?> - <?php echo date('Y-m-d', strtotime($sale->sale_date)); ?></li>
+                <li><?php echo esc_html(get_affiliate_name($sale->affiliate_id)); ?> - <?php echo wc_price($sale->sale_amount); ?> - <?php echo esc_html(date('Y-m-d', strtotime($sale->sale_date))); ?></li>
             <?php endforeach; ?>
         </ul>
 
         <h3>New Affiliates</h3>
         <ul>
             <?php foreach ($new_affiliates as $affiliate): ?>
-                <li><?php echo get_affiliate_name($affiliate->affiliate_id); ?> - <?php echo date('Y-m-d', strtotime($affiliate->registration_date)); ?></li>
+                <li><?php echo esc_html(get_affiliate_name($affiliate->affiliate_id)); ?> - <?php echo esc_html(date('Y-m-d', strtotime($affiliate->registration_date))); ?></li>
             <?php endforeach; ?>
         </ul>
 
         <h3>Top Affiliates This Month</h3>
         <ul>
             <?php foreach ($top_affiliates_this_month as $affiliate): ?>
-                <li><?php echo get_affiliate_name($affiliate->affiliate_id); ?> - <?php echo wc_price($affiliate->total_revenue); ?></li>
+                <li><?php echo esc_html(get_affiliate_name($affiliate->affiliate_id)); ?> - <?php echo wc_price($affiliate->total_revenue); ?></li>
             <?php endforeach; ?>
         </ul>
     </div>
@@ -125,63 +124,3 @@ $top_affiliates_this_month = $wpdb->get_results("
     <div id="conversion-rate-chart"></div>
 </div>
 
-<script>
-// JavaScript to render the performance charts
-document.addEventListener('DOMContentLoaded', function () {
-    var salesRevenueData = {
-        labels: [/* months */],
-        datasets: [
-            {
-                label: 'Total Sales',
-                data: [/* data */],
-                borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false
-            },
-            {
-                label: 'Total Revenue',
-                data: [/* data */],
-                borderColor: 'rgba(153, 102, 255, 1)',
-                fill: false
-            }
-        ]
-    };
-
-    var conversionRateData = {
-        labels: [/* months */],
-        datasets: [
-            {
-                label: 'Conversion Rate',
-                data: [/* data */],
-                borderColor: 'rgba(255, 159, 64, 1)',
-                fill: false
-            }
-        ]
-    };
-
-    var ctxSalesRevenue = document.getElementById('sales-revenue-chart').getContext('2d');
-    new Chart(ctxSalesRevenue, {
-        type: 'line',
-        data: salesRevenueData,
-        options: {
-            responsive: true,
-            title: {
-                display: true,
-                text: 'Monthly Sales & Revenue'
-            }
-        }
-    });
-
-    var ctxConversionRate = document.getElementById('conversion-rate-chart').getContext('2d');
-    new Chart(ctxConversionRate, {
-        type: 'line',
-        data: conversionRateData,
-        options: {
-            responsive: true,
-            title: {
-                display: true,
-                text: 'Monthly Conversion Rate'
-            }
-        }
-    });
-});
-</script>

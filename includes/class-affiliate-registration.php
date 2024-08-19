@@ -156,6 +156,7 @@ class Affiliate_Registration {
     }
 
 
+
     public static function show_success_popup() {
         return '<script>
             document.addEventListener("DOMContentLoaded", function() {

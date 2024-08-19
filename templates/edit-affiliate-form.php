@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 
 // 获取 affiliate 详细信息
 $affiliate_id = isset($_GET['affiliate_id']) ? intval($_GET['affiliate_id']) : 0;
-$affiliate = Affiliate_User::get_affiliate_details($affiliate_id);  // 使用 Affiliate_User 类
+$affiliate = Affiliate_User::get_affiliate_details($affiliate_id);
 
 // 检查是否找到 affiliate
 if (!$affiliate) {
@@ -48,14 +48,13 @@ $quantity_custom_msg = isset($affiliate->quantity_custom_msg) ? $affiliate->quan
 
 <form method="post">
     <!-- Pre-fill with existing data -->
-    <input type="hidden" name="affiliate_id" value="<?php echo esc_attr($affiliate_id); ?>">
-    <p><label>Username:</label><br><input type="text" name="username" value="<?php echo esc_attr($affiliate->user_login); ?>" readonly></p>
-    <p><label>Email:</label><br><input type="email" name="email" value="<?php echo esc_attr($affiliate->email); ?>" required></p>
+    <input type="hidden" name="affiliate_id" value="<?php echo esc_attr($affiliate->user_id); ?>">
+    <p><label>Username:</label><br><input type="text" name="username" value="<?php echo esc_attr(get_userdata($affiliate->user_id)->user_login); ?>" readonly></p>
+    <p><label>Email:</label><br><input type="email" name="email" value="<?php echo esc_attr(get_userdata($affiliate->user_id)->user_email); ?>" required></p>
     <p><label>First Name:</label><br><input type="text" name="first_name" value="<?php echo esc_attr($affiliate->first_name); ?>" required></p>
     <p><label>Last Name:</label><br><input type="text" name="last_name" value="<?php echo esc_attr($affiliate->last_name); ?>" required></p>
     <p><label>Coupon Code:</label><br><input type="text" name="coupon_code" value="<?php echo esc_attr($affiliate->coupon_code); ?>" required></p>
     <p><label>Custom Message:</label><br><textarea name="custom_msg"><?php echo esc_textarea($affiliate->custom_msg); ?></textarea></p>
-
     <h2>Commission Settings</h2>
 
     <!-- Commission Type Selection -->
@@ -146,53 +145,3 @@ $quantity_custom_msg = isset($affiliate->quantity_custom_msg) ? $affiliate->quan
 </form>
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const commissionTypeSelect = document.getElementById('commission_type_select');
-    const commissionSections = {
-        product: document.getElementById('commission_by_product'),
-        order: document.getElementById('commission_by_order'),
-        quantity: document.getElementById('commission_by_quantity')
-    };
-
-    // 初始化时根据所选佣金类型显示对应的部分
-    function handleCommissionTypeChange(selectedType) {
-        Object.keys(commissionSections).forEach(type => {
-            commissionSections[type].style.display = (type === selectedType) ? 'block' : 'none';
-        });
-    }
-
-    commissionTypeSelect.addEventListener('change', function() {
-        handleCommissionTypeChange(this.value);
-    });
-
-    handleCommissionTypeChange(commissionTypeSelect.value); // 初始化时调用
-
-    // 动态添加和删除佣金规则
-    function handleAddCommissionSection(buttonId, containerId, className) {
-        document.getElementById(buttonId).addEventListener('click', function() {
-            const container = document.getElementById(containerId);
-            const newSection = container.querySelector(`.${className}`).cloneNode(true);
-            newSection.querySelectorAll('input, select, textarea').forEach(input => input.value = '');
-            container.appendChild(newSection);
-
-            newSection.querySelector(`.remove-${className}`).addEventListener('click', function() {
-                newSection.remove();
-            });
-        });
-    }
-
-    handleAddCommissionSection('add_product_commission', 'commission_by_product', 'product-commission');
-    handleAddCommissionSection('add_quantity_commission', 'commission_by_quantity', 'quantity-commission');
-
-    // 事件委托删除动态添加的产品和数量佣金设置
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('remove-product-commission')) {
-            event.target.closest('.product-commission').remove();
-        } else if (event.target.classList.contains('remove-quantity-commission')) {
-            event.target.closest('.quantity-commission').remove();
-        }
-    });
-});
-
-</script>

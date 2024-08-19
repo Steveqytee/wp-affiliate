@@ -12,61 +12,31 @@ class Affiliate_Admin {
             'dashicons-chart-line',
             7
         );
+        $submenus = [
+            'top-affiliates' => ['Top Affiliates', 'render_top_affiliates'],
+            'affiliate-management' => ['Affiliate User', 'render_affiliate_management'],
+            'affiliate-registrations' => ['Affiliate Registrations', 'render_affiliate_registrations'],
+            'add-new-affiliate' => ['Add New Affiliate', 'render_add_new_affiliate'],
+            'affiliate-statistics' => ['Statistics', 'render_affiliate_statistics'],
+            'affiliate-settings' => ['Settings', 'render_affiliate_settings'],
+        ];
+        foreach ($submenus as $slug => $details) {
+            add_submenu_page(
+                'affiliate-dashboard',
+                $details[0],
+                $details[0],
+                'manage_options',
+                $slug,
+                [self::class, $details[1]]
+            );
+        }
         add_submenu_page(
-            'affiliate-dashboard',
-            'Top Affiliates',
-            'Top Affiliates',
+            null,
+            'Edit Affiliate',
+            'Edit Affiliate',
             'manage_options',
-            'top-affiliates',
-            [self::class, 'render_top_affiliates']
-        );
-        add_submenu_page(
-            'affiliate-dashboard',
-            'Affiliate User',
-            'Affiliate User',
-            'manage_options',
-            'affiliate-management',
-            [self::class, 'render_affiliate_management']
-        );
-        add_submenu_page(
-            'affiliate-dashboard',
-            'Affiliate Registrations',
-            'Affiliate Registrations',
-            'manage_options',
-            'affiliate-registrations',
-            [self::class, 'render_affiliate_registrations']
-        );
-        add_submenu_page(
-            'affiliate-dashboard',
-            'Add New Affiliate',
-            'Add New Affiliate',
-            'manage_options',
-            'add-new-affiliate',
-            [self::class, 'render_add_new_affiliate']
-        );
-        add_submenu_page(
-            'affiliate-dashboard',
-            'Affiliate Statistics',
-            'Statistics',
-            'manage_options',
-            'affiliate-statistics',
-            ['Affiliate_Statistics', 'render_statistics_page']
-        );
-        add_submenu_page(
-            'affiliate-dashboard',
-            'Affiliate Settings',
-            'Settings',
-            'manage_options',
-            'affiliate-settings',
-            ['Affiliate_Settings', 'render_settings_page']
-        );
-        add_submenu_page(
-            null, // Parent slug, `null` means no visible parent menu
-            'Edit Affiliate', // Page title
-            'Edit Affiliate', // Menu title
-            'manage_options', // Capability
-            'edit-affiliate', // Menu slug
-            'Affiliate_Handlers::render_edit_affiliate_page' // Callback function
+            'edit-affiliate',
+            [self::class, 'render_edit_affiliate_page']
         );
     }
 
@@ -103,183 +73,154 @@ class Affiliate_Admin {
 
 
     public static function render_affiliate_statistics() {
-        include MY_AFFILIATE_PLUGIN_DIR . 'templates/affiliate-performance.php';
+        //include MY_AFFILIATE_PLUGIN_DIR . 'templates/affiliate-performance.php';
+        include MY_AFFILIATE_PLUGIN_DIR . 'templates/statistics.php';
+
     }
 
     public static function render_affiliate_settings() {
-        include MY_AFFILIATE_PLUGIN_DIR . 'templates/settings-page.php';
+        echo Affiliate_Settings::render_settings_page();
     }
 
-    public static function render_add_new_affiliate() {
-        if (isset($_POST['create_affiliate'])) {
-            // Sanitize and retrieve form data
-            $username = sanitize_text_field($_POST['username']);
-            $email = sanitize_email($_POST['email']);
-            $first_name = sanitize_text_field($_POST['first_name']);
-            $last_name = sanitize_text_field($_POST['last_name']);
-            $coupon_code = sanitize_text_field($_POST['coupon_code']);
-            $custom_msg = sanitize_textarea_field($_POST['custom_msg']);
+    public static function render_edit_affiliate_page() {
+        global $wpdb;
 
-            // Create the affiliate user
-            $result = self::create_affiliate_user($username, $email, $first_name, $last_name, $coupon_code, $custom_msg);
+        // Check if affiliate_id is provided
+        $affiliate_id = isset($_GET['affiliate_id']) ? intval($_GET['affiliate_id']) : 0;
+        $affiliate = null;
 
-            if (is_wp_error($result)) {
-                // Pass the error to the template if user creation fails
-                include MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
-                return;
-            }
+        // Try to fetch the affiliate by user_id
+        if ($affiliate_id) {
+            $affiliate = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}affiliates WHERE user_id = $affiliate_id");
+        }
 
-            // Handle commission settings
-            if ($_POST['commission_type_select'] === 'product') {
-                self::save_product_commission_settings($result);
-            } elseif ($_POST['commission_type_select'] === 'order') {
-                self::save_order_commission_settings($result);
-            } elseif ($_POST['commission_type_select'] === 'quantity') {
-                self::save_quantity_commission_settings($result);
-            }
+        // If affiliate is not found, try fetching by coupon_id
+        if (!$affiliate && isset($_GET['coupon_code'])) {
+            $coupon_code = sanitize_text_field($_GET['coupon_code']);
+            $affiliate = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}affiliates WHERE coupon_code = %s",
+                $coupon_code
+            ));
+        }
 
-            // Pass success message or further data to the template
-            echo '<div class="notice notice-success"><p>Affiliate created successfully!</p></div>';
-
-            include MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
+        // If still not found, show error message
+        if ($affiliate) {
+            include MY_AFFILIATE_PLUGIN_DIR . 'templates/edit-affiliate-form.php';
         } else {
-            // If the form is not submitted, just display the form
-            include MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
+            echo '<div class="notice notice-error"><p>Affiliate not found.</p></div>';
         }
     }
 
-    private static function create_affiliate_user($username, $email, $first_name, $last_name, $coupon_code, $custom_msg) {
-        // 检查用户名是否存在
-        if (username_exists($username)) {
-            return new WP_Error('username_exists', 'Username already exists.');
+
+
+   public static function render_add_new_affiliate() {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_affiliate'])) {
+        $result = self::create_affiliate_user($_POST);
+
+        if (is_wp_error($result)) {
+            include MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
+            return;
         }
 
-        // 检查邮箱是否存在
-        if (email_exists($email)) {
-            return new WP_Error('email_exists', 'Email already exists.');
-        }
+        echo '<div class="notice notice-success"><p>Affiliate created successfully!</p></div>';
+    }
+
+    include MY_AFFILIATE_PLUGIN_DIR . 'templates/add-affiliate-form.php';
+}
+
+    private static function create_affiliate_user($data) {
+        $username = sanitize_text_field($data['username']);
+        $email = sanitize_email($data['email']);
+        $first_name = sanitize_text_field($data['first_name']);
+        $last_name = sanitize_text_field($data['last_name']);
+        $coupon_code = sanitize_text_field($data['coupon_code']);
+        $custom_msg = sanitize_textarea_field($data['custom_msg']);
 
         $user_id = wp_create_user($username, wp_generate_password(), $email);
-        if (is_wp_error($user_id)) {
-            return $user_id; // 返回错误对象
-        }
+        if (is_wp_error($user_id)) return $user_id;
 
         wp_update_user([
             'ID' => $user_id,
             'first_name' => $first_name,
-            'last_name' => $last_name, // 保存姓氏
+            'last_name' => $last_name,
         ]);
 
-        $coupon_id = Affiliate_Helpers::create_affiliate_coupon($user_id, $coupon_code);
-        if (is_wp_error($coupon_id)) {
-            return $coupon_id; // 返回错误对象
-        }
-
         global $wpdb;
-        $result = $wpdb->insert(
+        $wpdb->insert(
             $wpdb->prefix . 'affiliates',
             [
                 'user_id' => $user_id,
-                'coupon_id' => $coupon_id,
+                'coupon_id' => Affiliate_Helpers::create_affiliate_coupon($user_id, $coupon_code),
                 'commission_rate' => 5,
                 'created_at' => current_time('mysql'),
                 'custom_msg' => $custom_msg
             ]
         );
 
-        if ($result === false) {
-            return new WP_Error('db_insert_error', 'Failed to insert affiliate into the database.');
-        }
-
-        // Save commission settings based on the selected type
         $affiliate_id = $wpdb->insert_id;
 
-        // Save commission by product
-        if ($_POST['commission_type_select'] === 'product') {
-            self::save_product_commission_settings($affiliate_id);
+        if (isset($data['commission_type_select'])) {
+            if ($data['commission_type_select'] === 'product') {
+                self::save_product_commission_settings($affiliate_id, $data);
+            } elseif ($data['commission_type_select'] === 'order') {
+                self::save_order_commission_settings($affiliate_id, $data);
+            } elseif ($data['commission_type_select'] === 'quantity') {
+                self::save_quantity_commission_settings($affiliate_id, $data);
+            }
         }
 
-        // Save commission by order value
-        elseif ($_POST['commission_type_select'] === 'order') {
-            self::save_order_commission_settings($affiliate_id);
-        }
-
-        // Save commission by quantity sold
-        elseif ($_POST['commission_type_select'] === 'quantity') {
-            self::save_quantity_commission_settings($affiliate_id);
-        }
-
-        return true; // 成功时返回 true
+        return true;
     }
-    private static function save_product_commission_settings($affiliate_id) {
+
+    private static function save_product_commission_settings($affiliate_id, $data) {
         global $wpdb;
 
-        $product_ids = $_POST['product_id'];
-        $quantities_below = $_POST['product_quantity_below'];
-        $quantities_above = $_POST['product_quantity_above'];
-        $commission_types = $_POST['product_commission_type'];
-        $commission_values_below = $_POST['product_commission_value_below'];
-        $commission_values_above = $_POST['product_commission_value_above'];
-
-        foreach ($product_ids as $index => $product_id) {
+        foreach ($data['product_id'] as $index => $product_id) {
             $wpdb->insert(
                 $wpdb->prefix . 'affiliate_product_commissions',
                 [
                     'affiliate_id' => $affiliate_id,
                     'product_id' => intval($product_id),
-                    'quantity_below' => intval($quantities_below[$index]),
-                    'quantity_above' => intval($quantities_above[$index]),
-                    'commission_type' => sanitize_text_field($commission_types[$index]),
-                    'commission_value_below' => floatval($commission_values_below[$index]),
-                    'commission_value_above' => floatval($commission_values_above[$index]),
+                    'quantity_below' => intval($data['product_quantity_below'][$index]),
+                    'quantity_above' => intval($data['product_quantity_above'][$index]),
+                    'commission_type' => sanitize_text_field($data['product_commission_type'][$index]),
+                    'commission_value_below' => floatval($data['product_commission_value_below'][$index]),
+                    'commission_value_above' => floatval($data['product_commission_value_above'][$index]),
                 ]
             );
         }
     }
 
-    private static function save_order_commission_settings($affiliate_id) {
+   private static function save_order_commission_settings($affiliate_id, $data) {
+    global $wpdb;
+
+    $wpdb->insert(
+        $wpdb->prefix . 'affiliate_order_commissions',
+        [
+            'affiliate_id' => $affiliate_id,
+            'order_value_threshold' => floatval($data['order_value_threshold']),
+            'commission_type_below' => sanitize_text_field($data['order_commission_type_below']),
+            'commission_value_below' => floatval($data['order_commission_value_below']),
+            'commission_type_above' => sanitize_text_field($data['order_commission_type_above']),
+            'commission_value_above' => floatval($data['order_commission_value_above']),
+        ]
+    );
+}
+
+    private static function save_quantity_commission_settings($affiliate_id, $data) {
         global $wpdb;
 
-        $order_value_threshold = floatval($_POST['order_value_threshold']);
-        $commission_type_below = sanitize_text_field($_POST['order_commission_type_below']);
-        $commission_value_below = floatval($_POST['order_commission_value_below']);
-        $commission_type_above = sanitize_text_field($_POST['order_commission_type_above']);
-        $commission_value_above = floatval($_POST['order_commission_value_above']);
-
-        $wpdb->insert(
-            $wpdb->prefix . 'affiliate_order_commissions',
-            [
-                'affiliate_id' => $affiliate_id,
-                'order_value_threshold' => $order_value_threshold,
-                'commission_type_below' => $commission_type_below,
-                'commission_value_below' => $commission_value_below,
-                'commission_type_above' => $commission_type_above,
-                'commission_value_above' => $commission_value_above,
-            ]
-        );
-    }
-
-    private static function save_quantity_commission_settings($affiliate_id) {
-        global $wpdb;
-
-        $quantities_below = $_POST['quantity_below'];
-        $quantities_above = $_POST['quantity_above'];
-        $commission_types = $_POST['quantity_commission_type'];
-        $commission_values_below = $_POST['quantity_commission_value_below'];
-        $commission_values_above = $_POST['quantity_commission_value_above'];
-        $custom_msgs = $_POST['quantity_custom_msg'];
-
-        foreach ($quantities_below as $index => $quantity_below) {
+        foreach ($data['quantity_below'] as $index => $quantity_below) {
             $wpdb->insert(
                 $wpdb->prefix . 'affiliate_quantity_commissions',
                 [
                     'affiliate_id' => $affiliate_id,
                     'quantity_below' => intval($quantity_below),
-                    'quantity_above' => intval($quantities_above[$index]),
-                    'commission_type' => sanitize_text_field($commission_types[$index]),
-                    'commission_value_below' => floatval($commission_values_below[$index]),
-                    'commission_value_above' => floatval($commission_values_above[$index]),
-                    'custom_msg' => sanitize_textarea_field($custom_msgs[$index]),
+                    'quantity_above' => intval($data['quantity_above'][$index]),
+                    'commission_type' => sanitize_text_field($data['quantity_commission_type'][$index]),
+                    'commission_value_below' => floatval($data['quantity_commission_value_below'][$index]),
+                    'commission_value_above' => floatval($data['quantity_commission_value_above'][$index]),
+                    'custom_msg' => sanitize_textarea_field($data['quantity_custom_msg'][$index]),
                 ]
             );
         }

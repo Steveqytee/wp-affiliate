@@ -136,18 +136,4 @@ $affiliates = $wpdb->get_results($query);
     </table>
 </form>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var selectAllCheckbox = document.getElementById('select-all');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('click', function(event) {
-            var checkboxes = document.querySelectorAll('input[name="affiliate_ids[]"]');
-            for (var checkbox of checkboxes) {
-                checkbox.checked = event.target.checked;
-            }
-        });
-    } else {
-        console.warn('Select All checkbox not found.');
-    }
-});
-</script>
+
